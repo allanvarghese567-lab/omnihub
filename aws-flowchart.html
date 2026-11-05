@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>OmniHub · AWS Dynamic Flowchart</title>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+  <style>
+    :root {
+      --bg: #0a0a0b;
+      --panel: #111113;
+      --border: #27272a;
+      --text: #e4e4e7;
+      --muted: #a1a1aa;
+      --accent: #5ec4a0; /* sage */
+      --accent2: #9FB4A8; /* celadon */
+      --steel: #c8ccd4;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: "Inter", system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      min-height: 100vh;
+      padding: 1.5rem;
+    }
+    .container { max-width: 1200px; margin: 0 auto; }
+    header {
+      display: flex;
+      align-items: baseline;
+      gap: 1rem;
+      margin-bottom: 1.75rem;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 1rem;
+    }
+    h1 {
+      font-size: 1.5rem;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      color: var(--steel);
+    }
+    h1 span { color: var(--accent); font-weight: 500; }
+    .tag {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      border: 1px solid var(--border);
+      padding: 0.2rem 0.5rem;
+      border-radius: 4px;
+    }
+    .controls {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 1rem;
+      margin-bottom: 1.25rem;
+      align-items: start;
+    }
+    label {
+      display: block;
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin-bottom: 0.35rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    textarea, input, select {
+      width: 100%;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 0.7rem 0.9rem;
+      border-radius: 6px;
+      font-size: 0.95rem;
+      font-family: inherit;
+      resize: vertical;
+    }
+    textarea:focus, input:focus { outline: none; border-color: var(--accent); }
+    .btn-row { display: flex; gap: 0.6rem; flex-wrap: wrap; }
+    button {
+      background: var(--accent);
+      color: #0a0a0b;
+      border: none;
+      padding: 0.65rem 1.2rem;
+      border-radius: 6px;
+      font-weight: 600;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: opacity 0.15s;
+    }
+    button:hover { opacity: 0.9; }
+    button.secondary {
+      background: transparent;
+      color: var(--steel);
+      border: 1px solid var(--border);
+    }
+    .presets {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+      margin-top: 0.6rem;
+    }
+    .preset {
+      font-size: 0.75rem;
+      padding: 0.25rem 0.6rem;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      color: var(--muted);
+      cursor: pointer;
+    }
+    .preset:hover { border-color: var(--accent); color: var(--accent); }
+    .diagram-wrap {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1.5rem;
+      min-height: 420px;
+      overflow: auto;
+      margin-bottom: 1.5rem;
+    }
+    .mermaid { display: flex; justify-content: center; }
+    .meta {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+    }
+    @media (max-width: 700px) {
+      .controls, .meta { grid-template-columns: 1fr; }
+    }
+    .code-box {
+      background: #09090b;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 0.9rem;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 0.8rem;
+      color: var(--accent2);
+      white-space: pre-wrap;
+      max-height: 220px;
+      overflow: auto;
+    }
+    .iframe-box {
+      background: #09090b;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 0.9rem;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 0.8rem;
+      color: var(--steel);
+      word-break: break-all;
+    }
+    footer {
+      margin-top: 2rem;
+      font-size: 0.75rem;
+      color: var(--muted);
+      border-top: 1px solid var(--border);
+      padding-top: 1rem;
+    }
+    .hint { font-size: 0.8rem; color: var(--muted); margin-top: 0.4rem; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>OmniHub <span>· AWS Flow</span></h1>
+      <span class="tag">Dynamic Architecture</span>
+    </header>
+
+    <div class="controls">
+      <div>
+        <label for="services">Services (short forms or full names, comma-separated)</label>
+        <textarea id="services" rows="3" placeholder="e.g. Route53, CloudFront, ALB, EC2, RDS, S3, Lambda, DynamoDB, IAM, VPC">Route53, CloudFront, ALB, EC2, RDS, S3, IAM, VPC</textarea>
+        <div class="presets">
+          <span class="preset" data-services="Route53, CloudFront, ALB, EC2, RDS, ElastiCache, S3, IAM, VPC">3-Tier Web</span>
+          <span class="preset" data-services="API Gateway, Lambda, DynamoDB, S3, Cognito, IAM">Serverless API</span>
+          <span class="preset" data-services="EventBridge, SQS, Lambda, SNS, DynamoDB">Event-Driven</span>
+          <span class="preset" data-services="S3, Glue, Athena, Redshift, QuickSight">Data Lake</span>
+          <span class="preset" data-services="CloudFront, S3, Route53, ACM, WAF">Static + CDN</span>
+          <span class="preset" data-services="VPC, ALB, ECS, RDS, ElastiCache, CloudWatch">Container App</span>
+        </div>
+        <p class="hint">Supported short forms: EC2, S3, Lambda, RDS, DynamoDB, ALB, NLB, API GW / API Gateway, VPC, IAM, CloudFront, Route53, SQS, SNS, EventBridge, Cognito, KMS, CloudWatch, ECS, EKS, Fargate, ElastiCache, Glue, Athena, Redshift, Step Functions, WAF, ACM …</p>
+      </div>
+      <div class="btn-row" style="align-self: end;">
+        <button id="generate">Generate Flowchart</button>
+        <button class="secondary" id="copyMermaid">Copy Mermaid</button>
+      </div>
+    </div>
+
+    <div class="diagram-wrap">
+      <div class="mermaid" id="diagram">
+        flowchart TB
+          User((User)) --> R53[Route 53]
+          R53 --> CF[CloudFront]
+          CF --> ALB[ALB]
+          ALB --> EC2[EC2]
+          EC2 --> RDS[(RDS)]
+          EC2 --> S3[(S3)]
+          IAM{{IAM}} -.-> EC2
+          VPC[[VPC]] -.-> ALB
+          VPC -.-> EC2
+          VPC -.-> RDS
+      </div>
+    </div>
+
+    <div class="meta">
+      <div>
+        <label>Mermaid source</label>
+        <div class="code-box" id="mermaidSource"></div>
+      </div>
+      <div>
+        <label>Embed as iframe (OmniHub ready)</label>
+        <div class="iframe-box" id="iframeCode">
+<iframe
+  src="YOUR_HOSTED_URL/aws-flowchart.html"
+  width="100%"
+  height="720"
+  style="border:1px solid #27272a;border-radius:8px;background:#0a0a0b;"
+  title="OmniHub AWS Dynamic Flowchart"
+  loading="lazy">
+</iframe>
+        </div>
+        <p class="hint" style="margin-top:0.5rem;">Host this HTML file (GitHub Pages / Vercel / any static host), replace YOUR_HOSTED_URL, then drop the iframe into any page or OmniHub dashboard.</p>
+      </div>
+    </div>
+
+    <footer>
+      OmniHub AWS Flow · Uses official short forms + Iconify logos where available · Mermaid.js · Designed for dark editorial use. Icons © Amazon Web Services.
+    </footer>
+  </div>
+
+  <script>
+    // Service catalog: short → display name + category (for layering)
+    const CATALOG = {
+      // Edge / Global
+      "route53": { name: "Route 53", cat: "edge", icon: "logos:aws-route53" },
+      "r53": { name: "Route 53", cat: "edge" },
+      "cloudfront": { name: "CloudFront", cat: "edge", icon: "logos:aws-cloudfront" },
+      "cf": { name: "CloudFront", cat: "edge" },
+      "waf": { name: "WAF", cat: "edge" },
+      "acm": { name: "ACM", cat: "edge" },
+      "cognito": { name: "Cognito", cat: "edge" },
+
+      // Network
+      "vpc": { name: "VPC", cat: "net" },
+      "alb": { name: "ALB", cat: "net" },
+      "nlb": { name: "NLB", cat: "net" },
+      "elb": { name: "ELB", cat: "net" },
+      "api gateway": { name: "API Gateway", cat: "net" },
+      "apigw": { name: "API Gateway", cat: "net" },
+      "api gw": { name: "API Gateway", cat: "net" },
+      "gateway": { name: "API Gateway", cat: "net" },
+
+      // Compute
+      "ec2": { name: "EC2", cat: "compute", icon: "logos:aws-ec2" },
+      "lambda": { name: "Lambda", cat: "compute", icon: "logos:aws-lambda" },
+      "ecs": { name: "ECS", cat: "compute" },
+      "eks": { name: "EKS", cat: "compute" },
+      "fargate": { name: "Fargate", cat: "compute" },
+      "beanstalk": { name: "Elastic Beanstalk", cat: "compute" },
+
+      // Data
+      "s3": { name: "S3", cat: "data", icon: "logos:aws-s3" },
+      "rds": { name: "RDS", cat: "data", icon: "logos:aws-rds" },
+      "aurora": { name: "Aurora", cat: "data" },
+      "dynamodb": { name: "DynamoDB", cat: "data", icon: "logos:aws-dynamodb" },
+      "ddb": { name: "DynamoDB", cat: "data" },
+      "elasticache": { name: "ElastiCache", cat: "data" },
+      "redis": { name: "ElastiCache", cat: "data" },
+      "ebs": { name: "EBS", cat: "data" },
+      "efs": { name: "EFS", cat: "data" },
+
+      // Integration
+      "sqs": { name: "SQS", cat: "int" },
+      "sns": { name: "SNS", cat: "int" },
+      "eventbridge": { name: "EventBridge", cat: "int" },
+      "step functions": { name: "Step Functions", cat: "int" },
+      "sfn": { name: "Step Functions", cat: "int" },
+
+      // Analytics
+      "glue": { name: "Glue", cat: "analytics" },
+      "athena": { name: "Athena", cat: "analytics" },
+      "redshift": { name: "Redshift", cat: "analytics" },
+      "quicksight": { name: "QuickSight", cat: "analytics" },
+      "kinesis": { name: "Kinesis", cat: "analytics" },
+
+      // Security / Ops
+      "iam": { name: "IAM", cat: "sec" },
+      "kms": { name: "KMS", cat: "sec" },
+      "cloudwatch": { name: "CloudWatch", cat: "ops" },
+      "cloudtrail": { name: "CloudTrail", cat: "ops" },
+      "secrets manager": { name: "Secrets Manager", cat: "sec" },
+    };
+
+    function normalize(input) {
+      return input.trim().toLowerCase().replace(/\s+/g, " ");
+    }
+
+    function resolveServices(raw) {
+      const parts = raw.split(/[,;\n]+/).map(s => s.trim()).filter(Boolean);
+      const seen = new Set();
+      const list = [];
+      for (const p of parts) {
+        const key = normalize(p);
+        if (seen.has(key)) continue;
+        seen.add(key);
+        const entry = CATALOG[key] || { name: p, cat: "other" };
+        list.push({ key, ...entry });
+      }
+      return list;
+    }
+
+    function buildMermaid(services) {
+      if (!services.length) return "flowchart TB\n  Empty[Enter services above]";
+
+      const byCat = {
+        edge: [], net: [], compute: [], data: [], int: [], analytics: [], sec: [], ops: [], other: []
+      };
+      services.forEach(s => {
+        const c = byCat[s.cat] ? s.cat : "other";
+        byCat[c].push(s);
+      });
+
+      let id = 0;
+      const nodeMap = {};
+      function nid(s) {
+        if (!nodeMap[s.key]) nodeMap[s.key] = "N" + (++id);
+        return nodeMap[s.key];
+      }
+
+      const lines = ["flowchart TB"];
+
+      // User always present
+      lines.push("  User((User / Client))");
+
+      // Layer nodes
+      const layers = [
+        { key: "edge", title: "Edge / Global" },
+        { key: "net", title: "Network / Entry" },
+        { key: "compute", title: "Compute" },
+        { key: "data", title: "Data" },
+        { key: "int", title: "Integration" },
+        { key: "analytics", title: "Analytics" },
+        { key: "sec", title: "Security" },
+        { key: "ops", title: "Observability" },
+        { key: "other", title: "Other" },
+      ];
+
+      layers.forEach(layer => {
+        const items = byCat[layer.key];
+        if (!items.length) return;
+        lines.push(`  subgraph ${layer.key.toUpperCase()}["${layer.title}"]`);
+        items.forEach(s => {
+          const n = nid(s);
+          // Use different shapes by category
+          if (s.cat === "data") lines.push(`    ${n}[("${s.name}")]`);
+          else if (s.cat === "sec" || s.cat === "ops") lines.push(`    ${n}{{${s.name}}}`);
+          else if (s.cat === "net") lines.push(`    ${n}[/${s.name}/]`);
+          else lines.push(`    ${n}["${s.name}"]`);
+        });
+        lines.push("  end");
+      });
+
+      // Connections – simple intelligent wiring
+      const has = (cat) => byCat[cat].length > 0;
+      const first = (cat) => byCat[cat][0] ? nid(byCat[cat][0]) : null;
+
+      // User → Edge or Net
+      if (has("edge")) {
+        lines.push(`  User --> ${first("edge")}`);
+        // chain edge services
+        for (let i = 0; i < byCat.edge.length - 1; i++) {
+          lines.push(`  ${nid(byCat.edge[i])} --> ${nid(byCat.edge[i+1])}`);
+        }
+        if (has("net")) lines.push(`  ${nid(byCat.edge[byCat.edge.length-1])} --> ${first("net")}`);
+        else if (has("compute")) lines.push(`  ${nid(byCat.edge[byCat.edge.length-1])} --> ${first("compute")}`);
+      } else if (has("net")) {
+        lines.push(`  User --> ${first("net")}`);
+      } else if (has("compute")) {
+        lines.push(`  User --> ${first("compute")}`);
+      }
+
+      // Net → Compute
+      if (has("net") && has("compute")) {
+        byCat.net.forEach(n => {
+          byCat.compute.forEach(c => lines.push(`  ${nid(n)} --> ${nid(c)}`));
+        });
+      }
+
+      // Compute → Data / Int
+      if (has("compute")) {
+        byCat.compute.forEach(c => {
+          byCat.data.forEach(d => lines.push(`  ${nid(c)} --> ${nid(d)}`));
+          byCat.int.forEach(i => lines.push(`  ${nid(c)} --> ${nid(i)}`));
+          byCat.analytics.forEach(a => lines.push(`  ${nid(c)} --> ${nid(a)}`));
+        });
+      }
+
+      // Integration fan-out
+      if (has("int") && has("compute")) {
+        byCat.int.forEach(i => {
+          // optional back to compute or data
+          if (byCat.data.length) lines.push(`  ${nid(i)} -.-> ${nid(byCat.data[0])}`);
+        });
+      }
+
+      // Security / Ops dotted to everything important
+      if (has("sec")) {
+        const targets = [...byCat.compute, ...byCat.data, ...byCat.net].slice(0, 4);
+        byCat.sec.forEach(s => {
+          targets.forEach(t => lines.push(`  ${nid(s)} -.-> ${nid(t)}`));
+        });
+      }
+      if (has("ops")) {
+        const targets = [...byCat.compute, ...byCat.net].slice(0, 3);
+        byCat.ops.forEach(o => {
+          targets.forEach(t => lines.push(`  ${nid(o)} -.-> ${nid(t)}`));
+        });
+      }
+
+      // Style
+      lines.push("  classDef edge fill:#1a2a24,stroke:#5ec4a0,color:#e4e4e7");
+      lines.push("  classDef net fill:#1a222a,stroke:#9FB4A8,color:#e4e4e7");
+      lines.push("  classDef compute fill:#221a1a,stroke:#c8ccd4,color:#e4e4e7");
+      lines.push("  classDef data fill:#1a1f2a,stroke:#7aa2d4,color:#e4e4e7");
+      lines.push("  classDef sec fill:#2a1a1a,stroke:#d48a7a,color:#e4e4e7");
+
+      return lines.join("\n");
+    }
+
+    async function render() {
+      const raw = document.getElementById("services").value;
+      const services = resolveServices(raw);
+      const code = buildMermaid(services);
+      document.getElementById("mermaidSource").textContent = code;
+
+      const el = document.getElementById("diagram");
+      el.removeAttribute("data-processed");
+      el.innerHTML = code;
+
+      try {
+        await mermaid.run({ nodes: [el] });
+      } catch (e) {
+        el.innerHTML = `<pre style="color:#f87171">Render error: ${e.message}</pre>`;
+      }
+    }
+
+    // Init Mermaid
+    mermaid.initialize({
+      startOnLoad: false,
+      theme: "dark",
+      securityLevel: "loose",
+      flowchart: { curve: "basis", htmlLabels: true },
+      themeVariables: {
+        primaryColor: "#1a2a24",
+        primaryTextColor: "#e4e4e7",
+        primaryBorderColor: "#5ec4a0",
+        lineColor: "#5ec4a0",
+        secondaryColor: "#111113",
+        tertiaryColor: "#0a0a0b",
+        background: "#0a0a0b",
+        mainBkg: "#111113",
+        nodeBorder: "#5ec4a0",
+        clusterBkg: "#0f0f11",
+        clusterBorder: "#27272a",
+        titleColor: "#c8ccd4",
+        edgeLabelBackground: "#111113"
+      }
+    });
+
+    document.getElementById("generate").addEventListener("click", render);
+    document.getElementById("copyMermaid").addEventListener("click", () => {
+      const text = document.getElementById("mermaidSource").textContent;
+      navigator.clipboard.writeText(text).then(() => {
+        const btn = document.getElementById("copyMermaid");
+        btn.textContent = "Copied!";
+        setTimeout(() => btn.textContent = "Copy Mermaid", 1500);
+      });
+    });
+
+    document.querySelectorAll(".preset").forEach(el => {
+      el.addEventListener("click", () => {
+        document.getElementById("services").value = el.dataset.services;
+        render();
+      });
+    });
+
+    // Initial render
+    render();
+  </script>
+</body>
+</html>
