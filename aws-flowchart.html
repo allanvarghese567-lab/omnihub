@@ -12,8 +12,8 @@
       --border: #27272a;
       --text: #e4e4e7;
       --muted: #a1a1aa;
-      --accent: #5ec4a0; /* sage */
-      --accent2: #9FB4A8; /* celadon */
+      --accent: #5ec4a0;
+      --accent2: #9FB4A8;
       --steel: #c8ccd4;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -95,6 +95,10 @@
       color: var(--steel);
       border: 1px solid var(--border);
     }
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
     .presets {
       display: flex;
       flex-wrap: wrap;
@@ -119,6 +123,7 @@
       min-height: 420px;
       overflow: auto;
       margin-bottom: 1.5rem;
+      position: relative;
     }
     .mermaid { display: flex; justify-content: center; }
     .meta {
@@ -185,6 +190,7 @@
       <div class="btn-row" style="align-self: end;">
         <button id="generate">Generate Flowchart</button>
         <button class="secondary" id="copyMermaid">Copy Mermaid</button>
+        <button class="secondary" id="downloadPng">Download PNG</button>
       </div>
     </div>
 
@@ -213,7 +219,7 @@
         <label>Embed as iframe (OmniHub ready)</label>
         <div class="iframe-box" id="iframeCode">
 <iframe
-  src="YOUR_HOSTED_URL/aws-flowchart.html"
+  src="https://allanvarghese567-lab.github.io/omnihub/aws-flowchart.html"
   width="100%"
   height="720"
   style="border:1px solid #27272a;border-radius:8px;background:#0a0a0b;"
@@ -221,28 +227,24 @@
   loading="lazy">
 </iframe>
         </div>
-        <p class="hint" style="margin-top:0.5rem;">Host this HTML file (GitHub Pages / Vercel / any static host), replace YOUR_HOSTED_URL, then drop the iframe into any page or OmniHub dashboard.</p>
+        <p class="hint" style="margin-top:0.5rem;">Live URL ready. Copy the iframe above to embed anywhere.</p>
       </div>
     </div>
 
     <footer>
-      OmniHub AWS Flow · Uses official short forms + Iconify logos where available · Mermaid.js · Designed for dark editorial use. Icons © Amazon Web Services.
+      OmniHub AWS Flow · Download PNG supported · Mermaid.js · Designed for dark editorial use. Icons © Amazon Web Services.
     </footer>
   </div>
 
   <script>
-    // Service catalog: short → display name + category (for layering)
     const CATALOG = {
-      // Edge / Global
-      "route53": { name: "Route 53", cat: "edge", icon: "logos:aws-route53" },
+      "route53": { name: "Route 53", cat: "edge" },
       "r53": { name: "Route 53", cat: "edge" },
-      "cloudfront": { name: "CloudFront", cat: "edge", icon: "logos:aws-cloudfront" },
+      "cloudfront": { name: "CloudFront", cat: "edge" },
       "cf": { name: "CloudFront", cat: "edge" },
       "waf": { name: "WAF", cat: "edge" },
       "acm": { name: "ACM", cat: "edge" },
       "cognito": { name: "Cognito", cat: "edge" },
-
-      // Network
       "vpc": { name: "VPC", cat: "net" },
       "alb": { name: "ALB", cat: "net" },
       "nlb": { name: "NLB", cat: "net" },
@@ -251,41 +253,31 @@
       "apigw": { name: "API Gateway", cat: "net" },
       "api gw": { name: "API Gateway", cat: "net" },
       "gateway": { name: "API Gateway", cat: "net" },
-
-      // Compute
-      "ec2": { name: "EC2", cat: "compute", icon: "logos:aws-ec2" },
-      "lambda": { name: "Lambda", cat: "compute", icon: "logos:aws-lambda" },
+      "ec2": { name: "EC2", cat: "compute" },
+      "lambda": { name: "Lambda", cat: "compute" },
       "ecs": { name: "ECS", cat: "compute" },
       "eks": { name: "EKS", cat: "compute" },
       "fargate": { name: "Fargate", cat: "compute" },
       "beanstalk": { name: "Elastic Beanstalk", cat: "compute" },
-
-      // Data
-      "s3": { name: "S3", cat: "data", icon: "logos:aws-s3" },
-      "rds": { name: "RDS", cat: "data", icon: "logos:aws-rds" },
+      "s3": { name: "S3", cat: "data" },
+      "rds": { name: "RDS", cat: "data" },
       "aurora": { name: "Aurora", cat: "data" },
-      "dynamodb": { name: "DynamoDB", cat: "data", icon: "logos:aws-dynamodb" },
+      "dynamodb": { name: "DynamoDB", cat: "data" },
       "ddb": { name: "DynamoDB", cat: "data" },
       "elasticache": { name: "ElastiCache", cat: "data" },
       "redis": { name: "ElastiCache", cat: "data" },
       "ebs": { name: "EBS", cat: "data" },
       "efs": { name: "EFS", cat: "data" },
-
-      // Integration
       "sqs": { name: "SQS", cat: "int" },
       "sns": { name: "SNS", cat: "int" },
       "eventbridge": { name: "EventBridge", cat: "int" },
       "step functions": { name: "Step Functions", cat: "int" },
       "sfn": { name: "Step Functions", cat: "int" },
-
-      // Analytics
       "glue": { name: "Glue", cat: "analytics" },
       "athena": { name: "Athena", cat: "analytics" },
       "redshift": { name: "Redshift", cat: "analytics" },
       "quicksight": { name: "QuickSight", cat: "analytics" },
       "kinesis": { name: "Kinesis", cat: "analytics" },
-
-      // Security / Ops
       "iam": { name: "IAM", cat: "sec" },
       "kms": { name: "KMS", cat: "sec" },
       "cloudwatch": { name: "CloudWatch", cat: "ops" },
@@ -330,11 +322,8 @@
       }
 
       const lines = ["flowchart TB"];
-
-      // User always present
       lines.push("  User((User / Client))");
 
-      // Layer nodes
       const layers = [
         { key: "edge", title: "Edge / Global" },
         { key: "net", title: "Network / Entry" },
@@ -353,7 +342,6 @@
         lines.push(`  subgraph ${layer.key.toUpperCase()}["${layer.title}"]`);
         items.forEach(s => {
           const n = nid(s);
-          // Use different shapes by category
           if (s.cat === "data") lines.push(`    ${n}[("${s.name}")]`);
           else if (s.cat === "sec" || s.cat === "ops") lines.push(`    ${n}{{${s.name}}}`);
           else if (s.cat === "net") lines.push(`    ${n}[/${s.name}/]`);
@@ -362,14 +350,11 @@
         lines.push("  end");
       });
 
-      // Connections – simple intelligent wiring
       const has = (cat) => byCat[cat].length > 0;
       const first = (cat) => byCat[cat][0] ? nid(byCat[cat][0]) : null;
 
-      // User → Edge or Net
       if (has("edge")) {
         lines.push(`  User --> ${first("edge")}`);
-        // chain edge services
         for (let i = 0; i < byCat.edge.length - 1; i++) {
           lines.push(`  ${nid(byCat.edge[i])} --> ${nid(byCat.edge[i+1])}`);
         }
@@ -381,14 +366,12 @@
         lines.push(`  User --> ${first("compute")}`);
       }
 
-      // Net → Compute
       if (has("net") && has("compute")) {
         byCat.net.forEach(n => {
           byCat.compute.forEach(c => lines.push(`  ${nid(n)} --> ${nid(c)}`));
         });
       }
 
-      // Compute → Data / Int
       if (has("compute")) {
         byCat.compute.forEach(c => {
           byCat.data.forEach(d => lines.push(`  ${nid(c)} --> ${nid(d)}`));
@@ -397,15 +380,12 @@
         });
       }
 
-      // Integration fan-out
       if (has("int") && has("compute")) {
         byCat.int.forEach(i => {
-          // optional back to compute or data
           if (byCat.data.length) lines.push(`  ${nid(i)} -.-> ${nid(byCat.data[0])}`);
         });
       }
 
-      // Security / Ops dotted to everything important
       if (has("sec")) {
         const targets = [...byCat.compute, ...byCat.data, ...byCat.net].slice(0, 4);
         byCat.sec.forEach(s => {
@@ -419,7 +399,6 @@
         });
       }
 
-      // Style
       lines.push("  classDef edge fill:#1a2a24,stroke:#5ec4a0,color:#e4e4e7");
       lines.push("  classDef net fill:#1a222a,stroke:#9FB4A8,color:#e4e4e7");
       lines.push("  classDef compute fill:#221a1a,stroke:#c8ccd4,color:#e4e4e7");
@@ -446,7 +425,82 @@
       }
     }
 
-    // Init Mermaid
+    function downloadPNG() {
+      const svg = document.querySelector("#diagram svg");
+      if (!svg) {
+        alert("No diagram rendered yet. Generate a flowchart first.");
+        return;
+      }
+
+      const btn = document.getElementById("downloadPng");
+      btn.disabled = true;
+      btn.textContent = "Preparing…";
+
+      try {
+        // Clone and prepare SVG
+        const clone = svg.cloneNode(true);
+        const bbox = svg.getBBox();
+        const width = Math.ceil(bbox.width + 40);
+        const height = Math.ceil(bbox.height + 40);
+
+        clone.setAttribute("width", width);
+        clone.setAttribute("height", height);
+        clone.setAttribute("viewBox", `${bbox.x - 20} ${bbox.y - 20} ${width} ${height}`);
+
+        // Serialize
+        const serializer = new XMLSerializer();
+        let svgStr = serializer.serializeToString(clone);
+
+        // Ensure xmlns
+        if (!svgStr.includes('xmlns="http://www.w3.org/2000/svg"')) {
+          svgStr = svgStr.replace("<svg", '<svg xmlns="http://www.w3.org/2000/svg"');
+        }
+
+        const svgBlob = new Blob([svgStr], { type: "image/svg+xml;charset=utf-8" });
+        const url = URL.createObjectURL(svgBlob);
+
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement("canvas");
+          const scale = 2; // higher resolution
+          canvas.width = width * scale;
+          canvas.height = height * scale;
+          const ctx = canvas.getContext("2d");
+
+          // Dark background
+          ctx.fillStyle = "#0a0a0b";
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+          ctx.scale(scale, scale);
+          ctx.drawImage(img, 0, 0);
+
+          canvas.toBlob((blob) => {
+            const a = document.createElement("a");
+            a.href = URL.createObjectURL(blob);
+            a.download = "aws-flowchart.png";
+            a.click();
+            URL.revokeObjectURL(a.href);
+            URL.revokeObjectURL(url);
+
+            btn.disabled = false;
+            btn.textContent = "Download PNG";
+          }, "image/png");
+        };
+        img.onerror = () => {
+          alert("Failed to convert diagram to PNG.");
+          btn.disabled = false;
+          btn.textContent = "Download PNG";
+          URL.revokeObjectURL(url);
+        };
+        img.src = url;
+      } catch (err) {
+        console.error(err);
+        alert("Download failed. Try right-clicking the diagram instead.");
+        btn.disabled = false;
+        btn.textContent = "Download PNG";
+      }
+    }
+
     mermaid.initialize({
       startOnLoad: false,
       theme: "dark",
@@ -478,6 +532,7 @@
         setTimeout(() => btn.textContent = "Copy Mermaid", 1500);
       });
     });
+    document.getElementById("downloadPng").addEventListener("click", downloadPNG);
 
     document.querySelectorAll(".preset").forEach(el => {
       el.addEventListener("click", () => {
@@ -486,7 +541,6 @@
       });
     });
 
-    // Initial render
     render();
   </script>
 </body>
