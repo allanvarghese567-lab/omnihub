@@ -67,7 +67,6 @@
       font-size: 0.9rem; font-family: inherit; margin-bottom: 0.65rem;
     }
     input:focus, select:focus { outline: none; border-color: var(--accent); }
-    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
     .btn-row { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.25rem; }
     button {
       background: var(--accent); color: #0a0a0b; border: none;
@@ -81,15 +80,20 @@
     button.danger { background: transparent; color: #f87171; border: 1px solid #7f1d1d; }
     button:disabled { opacity: 0.5; cursor: not-allowed; }
     .list {
-      list-style: none; max-height: 180px; overflow-y: auto;
+      list-style: none; max-height: 220px; overflow-y: auto;
       border: 1px solid var(--border); border-radius: 6px; margin-bottom: 0.75rem;
     }
     .list li {
       display: flex; align-items: center; justify-content: space-between;
-      padding: 0.45rem 0.7rem; border-bottom: 1px solid var(--border);
-      font-size: 0.85rem;
+      padding: 0.5rem 0.7rem; border-bottom: 1px solid var(--border);
+      font-size: 0.85rem; cursor: grab; user-select: none;
+      transition: background 0.15s, border-color 0.15s;
     }
     .list li:last-child { border-bottom: none; }
+    .list li.dragging { opacity: 0.5; background: #1a2a24; }
+    .list li.drag-over { border-top: 2px solid var(--accent); background: #15201c; }
+    .list li.connect-target { background: #1a2a24; outline: 1px dashed var(--accent); }
+    .list .handle { color: var(--muted); margin-right: 0.5rem; cursor: grab; }
     .list .cat {
       font-size: 0.7rem; color: var(--muted); background: #0a0a0b;
       padding: 0.1rem 0.4rem; border-radius: 4px; margin-left: 0.4rem;
@@ -130,19 +134,24 @@
       border: 1px solid var(--border); border-radius: 999px; color: var(--muted); cursor: pointer;
     }
     .preset:hover { border-color: var(--accent); color: var(--accent); }
+    .toast {
+      position: fixed; bottom: 1.5rem; left: 50%; transform: translateX(-50%);
+      background: #1a2a24; border: 1px solid var(--accent); color: var(--accent);
+      padding: 0.6rem 1.2rem; border-radius: 8px; font-size: 0.85rem;
+      opacity: 0; transition: opacity 0.25s; pointer-events: none; z-index: 100;
+    }
+    .toast.show { opacity: 1; }
   </style>
 </head>
 <body>
   <div class="container">
     <header>
       <h1>OmniHub <span>· AWS Flow</span></h1>
-      <span class="tag">Manual Services + Connections</span>
+      <span class="tag">Drag & Drop + Auto-connect</span>
     </header>
 
     <div class="layout">
-      <!-- Left: Forms -->
       <div>
-        <!-- Add Service -->
         <div class="panel" style="margin-bottom:1rem;">
           <h3>Add Service</h3>
           <label>Service name</label>
@@ -171,12 +180,12 @@
           <div class="btn-row">
             <button id="addService">Add Service</button>
           </div>
+          <p class="hint">Drag items to reorder. Drag one service onto another to connect them.</p>
           <ul class="list" id="serviceList"></ul>
         </div>
 
-        <!-- Add Connection -->
         <div class="panel">
-          <h3>Connect Services</h3>
+          <h3>Connections</h3>
           <label>From</label>
           <select id="connFrom"></select>
           <label>To</label>
@@ -189,17 +198,15 @@
           </select>
           <div class="btn-row">
             <button id="addConn">Add Connection</button>
+            <button class="secondary" id="autoConnect">Auto-connect</button>
           </div>
           <ul class="list" id="connList"></ul>
-          <p class="hint">Add services first, then create connections between them.</p>
         </div>
       </div>
 
-      <!-- Right: Diagram + actions -->
       <div>
         <div class="actions">
           <button id="generate">Generate Flowchart</button>
-          <button class="secondary" id="autoConnect">Auto-connect</button>
           <button class="secondary" id="copyMermaid">Copy Mermaid</button>
           <button class="secondary" id="copyImage">Copy Image</button>
           <button class="secondary" id="downloadPng">Download PNG</button>
@@ -239,9 +246,11 @@
     </div>
 
     <footer>
-      OmniHub AWS Flow · Manual services + categories + connections · AWS icons via Iconify · Mermaid.js
+      OmniHub AWS Flow · Drag-and-drop reorder + drag-to-connect · Auto-connect · AWS icons · Mermaid.js
     </footer>
   </div>
+
+  <div class="toast" id="toast"></div>
 
   <script>
     const ICON = {
@@ -263,7 +272,6 @@
       int: "Integration", analytics: "Analytics", sec: "Security", ops: "Observability", other: "Other"
     };
 
-    // Default category guess
     const DEFAULT_CAT = {
       route53:"edge",r53:"edge",cloudfront:"edge",cf:"edge",waf:"edge",acm:"edge",cognito:"edge",
       vpc:"net",alb:"net",nlb:"net",elb:"net","api gateway":"net",apigw:"net","api gw":"net",gateway:"net",
@@ -274,11 +282,19 @@
       iam:"sec",kms:"sec","secrets manager":"sec",cloudwatch:"ops",cloudtrail:"ops"
     };
 
-    let services = []; // { id, name, key, cat }
-    let connections = []; // { fromId, toId, style }
+    let services = [];
+    let connections = [];
     let nextId = 1;
+    let dragId = null;
 
     function normalize(s) { return s.trim().toLowerCase().replace(/\s+/g, " "); }
+
+    function showToast(msg) {
+      const t = document.getElementById("toast");
+      t.textContent = msg;
+      t.classList.add("show");
+      setTimeout(() => t.classList.remove("show"), 1800);
+    }
 
     function iconUrl(key) {
       const icon = ICON[key];
@@ -293,21 +309,82 @@
     function refreshServiceList() {
       const ul = document.getElementById("serviceList");
       ul.innerHTML = services.map(s => `
-        <li>
-          <span>${s.name} <span class="cat">${CAT_LABEL[s.cat] || s.cat}</span></span>
+        <li draggable="true" data-id="${s.id}">
+          <span><span class="handle">⠿</span>${s.name} <span class="cat">${CAT_LABEL[s.cat] || s.cat}</span></span>
           <button class="remove" data-id="${s.id}">✕</button>
         </li>`).join("");
 
       ul.querySelectorAll(".remove").forEach(btn => {
-        btn.onclick = () => {
+        btn.onclick = (e) => {
+          e.stopPropagation();
           const id = +btn.dataset.id;
           services = services.filter(s => s.id !== id);
           connections = connections.filter(c => c.fromId !== id && c.toId !== id);
           refreshAll();
+          render();
         };
       });
 
-      // Update connection dropdowns
+      // Drag and drop
+      ul.querySelectorAll("li").forEach(li => {
+        li.addEventListener("dragstart", (e) => {
+          dragId = +li.dataset.id;
+          li.classList.add("dragging");
+          e.dataTransfer.effectAllowed = "move";
+          e.dataTransfer.setData("text/plain", String(dragId));
+        });
+        li.addEventListener("dragend", () => {
+          li.classList.remove("dragging");
+          ul.querySelectorAll("li").forEach(x => x.classList.remove("drag-over", "connect-target"));
+          dragId = null;
+        });
+        li.addEventListener("dragover", (e) => {
+          e.preventDefault();
+          const targetId = +li.dataset.id;
+          if (targetId === dragId) return;
+          ul.querySelectorAll("li").forEach(x => x.classList.remove("drag-over", "connect-target"));
+          // If holding Alt/Option → connect mode, else reorder
+          if (e.altKey) {
+            li.classList.add("connect-target");
+            e.dataTransfer.dropEffect = "link";
+          } else {
+            li.classList.add("drag-over");
+            e.dataTransfer.dropEffect = "move";
+          }
+        });
+        li.addEventListener("dragleave", () => {
+          li.classList.remove("drag-over", "connect-target");
+        });
+        li.addEventListener("drop", (e) => {
+          e.preventDefault();
+          const targetId = +li.dataset.id;
+          if (!dragId || targetId === dragId) return;
+
+          if (e.altKey) {
+            // Create connection
+            if (!connections.some(c => c.fromId === dragId && c.toId === targetId)) {
+              connections.push({ fromId: dragId, toId: targetId, style: "-->" });
+              showToast("Connection added");
+              refreshConnList();
+              render();
+            } else {
+              showToast("Connection already exists");
+            }
+          } else {
+            // Reorder
+            const fromIdx = services.findIndex(s => s.id === dragId);
+            const toIdx = services.findIndex(s => s.id === targetId);
+            if (fromIdx > -1 && toIdx > -1) {
+              const [item] = services.splice(fromIdx, 1);
+              services.splice(toIdx, 0, item);
+              refreshServiceList();
+              showToast("Reordered");
+            }
+          }
+          ul.querySelectorAll("li").forEach(x => x.classList.remove("drag-over", "connect-target"));
+        });
+      });
+
       const opts = services.map(s => `<option value="${s.id}">${s.name}</option>`).join("");
       document.getElementById("connFrom").innerHTML = opts || "<option value=\"\">— add services first —</option>";
       document.getElementById("connTo").innerHTML = opts || "<option value=\"\">— add services first —</option>";
@@ -328,6 +405,7 @@
         btn.onclick = () => {
           connections.splice(+btn.dataset.i, 1);
           refreshConnList();
+          render();
         };
       });
     }
@@ -342,17 +420,16 @@
       if (!name) return;
       const key = normalize(name);
       if (services.some(s => s.key === key)) {
-        alert("Service already added");
+        showToast("Service already added");
         return;
       }
       let cat = document.getElementById("svcCat").value;
-      // Auto-suggest category if still default and we know it
       if (DEFAULT_CAT[key]) cat = DEFAULT_CAT[key];
       services.push({ id: nextId++, name, key, cat });
       document.getElementById("svcName").value = "";
-      // Pre-select next sensible category
       if (DEFAULT_CAT[key]) document.getElementById("svcCat").value = DEFAULT_CAT[key];
       refreshAll();
+      showToast("Service added");
     }
 
     function addConnection() {
@@ -360,19 +437,20 @@
       const toId = +document.getElementById("connTo").value;
       const style = document.getElementById("connStyle").value;
       if (!fromId || !toId || fromId === toId) {
-        alert("Select two different services");
+        showToast("Select two different services");
         return;
       }
       if (connections.some(c => c.fromId === fromId && c.toId === toId)) {
-        alert("Connection already exists");
+        showToast("Connection already exists");
         return;
       }
       connections.push({ fromId, toId, style });
       refreshConnList();
+      render();
+      showToast("Connection added");
     }
 
     function autoConnect() {
-      // Simple intelligent wiring based on categories
       connections = [];
       const byCat = {};
       services.forEach(s => {
@@ -383,39 +461,48 @@
       const first = (cat) => byCat[cat]?.[0];
       const all = (cat) => byCat[cat] || [];
 
-      // User is implicit – we start from edge/net
-      if (first("edge") && first("net")) {
-        connections.push({ fromId: first("edge").id, toId: first("net").id, style: "-->" });
-      }
-      // Chain edge services
+      // Chain within edge
       const edges = all("edge");
       for (let i = 0; i < edges.length - 1; i++) {
         connections.push({ fromId: edges[i].id, toId: edges[i+1].id, style: "-->" });
+      }
+      // Edge → Net
+      if (edges.length && first("net")) {
+        connections.push({ fromId: edges[edges.length-1].id, toId: first("net").id, style: "-->" });
       }
       // Net → Compute
       all("net").forEach(n => all("compute").forEach(c => {
         connections.push({ fromId: n.id, toId: c.id, style: "-->" });
       }));
+      // If no net, edge → compute
+      if (!first("net") && edges.length && first("compute")) {
+        connections.push({ fromId: edges[edges.length-1].id, toId: first("compute").id, style: "-->" });
+      }
       // Compute → Data / Int / Analytics
       all("compute").forEach(c => {
         all("data").forEach(d => connections.push({ fromId: c.id, toId: d.id, style: "-->" }));
         all("int").forEach(i => connections.push({ fromId: c.id, toId: i.id, style: "-->" }));
         all("analytics").forEach(a => connections.push({ fromId: c.id, toId: a.id, style: "-->" }));
       });
-      // Security / Ops dotted
+      // Int → Data (optional feedback)
+      all("int").forEach(i => {
+        if (first("data")) connections.push({ fromId: i.id, toId: first("data").id, style: "-.->" });
+      });
+      // Security / Ops dotted to main components
       all("sec").forEach(s => {
-        [...all("compute"), ...all("data"), ...all("net")].slice(0, 3).forEach(t => {
+        [...all("compute"), ...all("data"), ...all("net")].slice(0, 4).forEach(t => {
           connections.push({ fromId: s.id, toId: t.id, style: "-.->" });
         });
       });
       all("ops").forEach(o => {
-        [...all("compute"), ...all("net")].slice(0, 2).forEach(t => {
+        [...all("compute"), ...all("net"), ...all("data")].slice(0, 3).forEach(t => {
           connections.push({ fromId: o.id, toId: t.id, style: "-.->" });
         });
       });
 
       refreshConnList();
       render();
+      showToast(`Auto-connected (${connections.length} links)`);
     }
 
     function buildMermaid() {
@@ -444,11 +531,9 @@
         lines.push("  end");
       });
 
-      // Link User to first edge or net or compute
       const start = byCat.edge?.[0] || byCat.net?.[0] || byCat.compute?.[0];
       if (start) lines.push(`  User --> ${idMap[start.id]}`);
 
-      // User-defined connections
       connections.forEach(c => {
         const a = idMap[c.fromId];
         const b = idMap[c.toId];
@@ -477,7 +562,6 @@
       }
     }
 
-    // PNG helpers
     function getDiagramPngBlob(scale = 2) {
       return new Promise((resolve, reject) => {
         const svg = document.querySelector("#diagram svg");
@@ -536,7 +620,6 @@
       finally { setTimeout(() => { btn.disabled = false; btn.textContent = "Copy Image"; }, 1500); }
     }
 
-    // Presets
     const PRESETS = {
       "3tier": [
         { name: "Route53", cat: "edge" }, { name: "CloudFront", cat: "edge" },
@@ -579,7 +662,6 @@
       autoConnect();
     }
 
-    // Init Mermaid
     mermaid.initialize({
       startOnLoad: false, theme: "dark", securityLevel: "loose",
       flowchart: { curve: "basis", htmlLabels: true },
@@ -592,12 +674,11 @@
       }
     });
 
-    // Events
     document.getElementById("addService").onclick = addService;
     document.getElementById("svcName").addEventListener("keydown", e => { if (e.key === "Enter") addService(); });
     document.getElementById("addConn").onclick = addConnection;
-    document.getElementById("generate").onclick = render;
     document.getElementById("autoConnect").onclick = autoConnect;
+    document.getElementById("generate").onclick = render;
     document.getElementById("copyMermaid").onclick = () => {
       navigator.clipboard.writeText(document.getElementById("mermaidSource").textContent).then(() => {
         const b = document.getElementById("copyMermaid"); b.textContent = "Copied!";
@@ -616,7 +697,6 @@
       el.onclick = () => loadPreset(el.dataset.preset);
     });
 
-    // Start with a useful default
     loadPreset("3tier");
   </script>
 </body>
