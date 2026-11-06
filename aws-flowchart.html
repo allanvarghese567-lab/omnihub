@@ -58,6 +58,38 @@
     button.secondary { background: transparent; color: var(--steel); border: 1px solid var(--border); }
     button.danger { background: transparent; color: #f87171; border: 1px solid #7f1d1d; }
     button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    /* Custom dropdown with logos */
+    .dd { position: relative; margin-bottom: 0.65rem; }
+    .dd-btn {
+      width: 100%; display: flex; align-items: center; gap: 0.55rem;
+      background: #0a0a0b; border: 1px solid var(--border); color: var(--text);
+      padding: 0.55rem 0.75rem; border-radius: 6px; font-size: 0.9rem;
+      cursor: pointer; text-align: left;
+    }
+    .dd-btn:hover, .dd.open .dd-btn { border-color: var(--accent); }
+    .dd-btn img { width: 22px; height: 22px; flex-shrink: 0; }
+    .dd-btn .label { flex: 1; }
+    .dd-btn .chev { color: var(--muted); font-size: 0.75rem; }
+    .dd-menu {
+      display: none; position: absolute; z-index: 50; top: 100%; left: 0; right: 0;
+      max-height: 280px; overflow-y: auto; background: #0a0a0b;
+      border: 1px solid var(--border); border-radius: 6px; margin-top: 4px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.45);
+    }
+    .dd.open .dd-menu { display: block; }
+    .dd-group {
+      font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em;
+      color: var(--muted); padding: 0.45rem 0.75rem 0.25rem; background: #111113;
+    }
+    .dd-item {
+      display: flex; align-items: center; gap: 0.55rem;
+      padding: 0.45rem 0.75rem; cursor: pointer; font-size: 0.9rem;
+    }
+    .dd-item:hover, .dd-item.active { background: #1a2a24; }
+    .dd-item img { width: 22px; height: 22px; flex-shrink: 0; }
+    .dd-item.custom-item { color: var(--steel); }
+
     .list {
       list-style: none; max-height: 220px; overflow-y: auto;
       border: 1px solid var(--border); border-radius: 6px; margin-bottom: 0.75rem;
@@ -66,7 +98,6 @@
       display: flex; align-items: center; justify-content: space-between;
       padding: 0.5rem 0.7rem; border-bottom: 1px solid var(--border);
       font-size: 0.85rem; cursor: grab; user-select: none;
-      transition: background 0.15s, border-color 0.15s;
     }
     .list li:last-child { border-bottom: none; }
     .list li.dragging { opacity: 0.5; background: #1a2a24; }
@@ -81,10 +112,7 @@
       background: none; border: none; color: #f87171; cursor: pointer;
       font-size: 0.8rem; padding: 0.15rem 0.35rem;
     }
-    .list .thumb {
-      width: 18px; height: 18px; margin-right: 0.4rem; vertical-align: middle;
-      border-radius: 2px;
-    }
+    .list .thumb { width: 18px; height: 18px; margin-right: 0.4rem; border-radius: 2px; }
     .diagram-wrap {
       background: var(--panel); border: 1px solid var(--border);
       border-radius: 8px; padding: 1.25rem; min-height: 420px;
@@ -127,7 +155,7 @@
   <div class="container">
     <header>
       <h1>OmniHub <span>· AWS Flow</span></h1>
-      <span class="tag">Custom names + AWS logos</span>
+      <span class="tag">Logos in dropdown</span>
     </header>
 
     <div class="layout">
@@ -139,71 +167,27 @@
           <input id="svcName" placeholder="e.g. Web Server, Prod DB, CDN" />
 
           <label>Service type (logo)</label>
-          <select id="svcType">
-            <optgroup label="Compute">
-              <option value="ec2">EC2</option>
-              <option value="lambda">Lambda</option>
-              <option value="ecs">ECS</option>
-              <option value="eks">EKS</option>
-              <option value="fargate">Fargate</option>
-              <option value="beanstalk">Elastic Beanstalk</option>
-            </optgroup>
-            <optgroup label="Storage & Database">
-              <option value="s3">S3</option>
-              <option value="rds">RDS</option>
-              <option value="aurora">Aurora</option>
-              <option value="dynamodb">DynamoDB</option>
-              <option value="elasticache">ElastiCache</option>
-              <option value="ebs">EBS</option>
-              <option value="efs">EFS</option>
-            </optgroup>
-            <optgroup label="Networking">
-              <option value="vpc">VPC</option>
-              <option value="alb">ALB</option>
-              <option value="nlb">NLB</option>
-              <option value="api gateway">API Gateway</option>
-              <option value="cloudfront">CloudFront</option>
-              <option value="route53">Route 53</option>
-              <option value="waf">WAF</option>
-              <option value="acm">ACM</option>
-            </optgroup>
-            <optgroup label="Integration">
-              <option value="sqs">SQS</option>
-              <option value="sns">SNS</option>
-              <option value="eventbridge">EventBridge</option>
-              <option value="step functions">Step Functions</option>
-            </optgroup>
-            <optgroup label="Analytics">
-              <option value="glue">Glue</option>
-              <option value="athena">Athena</option>
-              <option value="redshift">Redshift</option>
-              <option value="quicksight">QuickSight</option>
-              <option value="kinesis">Kinesis</option>
-            </optgroup>
-            <optgroup label="Security & Ops">
-              <option value="iam">IAM</option>
-              <option value="kms">KMS</option>
-              <option value="cognito">Cognito</option>
-              <option value="secrets manager">Secrets Manager</option>
-              <option value="cloudwatch">CloudWatch</option>
-              <option value="cloudtrail">CloudTrail</option>
-            </optgroup>
-            <optgroup label="Other">
-              <option value="custom">Custom (optional logo URL)</option>
-            </optgroup>
-          </select>
+          <div class="dd" id="svcTypeDd">
+            <button type="button" class="dd-btn" id="svcTypeBtn">
+              <img id="svcTypeIcon" src="https://api.iconify.design/logos/aws-ec2.svg?height=22" alt="" />
+              <span class="label" id="svcTypeLabel">EC2</span>
+              <span class="chev">▼</span>
+            </button>
+            <div class="dd-menu" id="svcTypeMenu"></div>
+            <input type="hidden" id="svcType" value="ec2" />
+          </div>
 
           <div id="customLogoWrap">
             <label>Custom logo URL (optional)</label>
             <input id="customLogo" type="url" placeholder="https://example.com/logo.svg" />
-            <p class="hint">Leave empty for no logo. Use a direct image URL (SVG/PNG).</p>
+            <p class="hint">Leave empty for no logo.</p>
           </div>
 
           <label>Category (grouping)</label>
           <select id="svcCat">
             <option value="edge">Edge / Global</option>
             <option value="net">Network / Entry</option>
-            <option value="compute">Compute</option>
+            <option value="compute" selected>Compute</option>
             <option value="data">Data</option>
             <option value="int">Integration</option>
             <option value="analytics">Analytics</option>
@@ -281,14 +265,13 @@
     </div>
 
     <footer>
-      OmniHub AWS Flow · Custom service names + AWS logos · Drag-and-drop · Auto-connect · Mermaid.js
+      OmniHub AWS Flow · Service type dropdown with logos · Custom names · Drag-and-drop · Mermaid.js
     </footer>
   </div>
 
   <div class="toast" id="toast"></div>
 
   <script>
-    // Iconify logo keys
     const ICON = {
       "route53":"aws-route-53","cloudfront":"aws-cloudfront","waf":"aws-waf",
       "acm":"aws-certificate-manager","cognito":"aws-cognito","vpc":"aws-vpc",
@@ -317,12 +300,21 @@
       "custom":"Custom"
     };
 
+    const TYPE_GROUPS = [
+      { label: "Compute", items: ["ec2","lambda","ecs","eks","fargate","beanstalk"] },
+      { label: "Storage & Database", items: ["s3","rds","aurora","dynamodb","elasticache","ebs","efs"] },
+      { label: "Networking", items: ["vpc","alb","nlb","api gateway","cloudfront","route53","waf","acm"] },
+      { label: "Integration", items: ["sqs","sns","eventbridge","step functions"] },
+      { label: "Analytics", items: ["glue","athena","redshift","quicksight","kinesis"] },
+      { label: "Security & Ops", items: ["iam","kms","cognito","secrets manager","cloudwatch","cloudtrail"] },
+      { label: "Other", items: ["custom"] }
+    ];
+
     const CAT_LABEL = {
       edge: "Edge / Global", net: "Network / Entry", compute: "Compute", data: "Data",
       int: "Integration", analytics: "Analytics", sec: "Security", ops: "Observability", other: "Other"
     };
 
-    // Default category when a type is selected
     const TYPE_TO_CAT = {
       route53:"edge",cloudfront:"edge",waf:"edge",acm:"edge",cognito:"edge",
       vpc:"net",alb:"net",nlb:"net","api gateway":"net",
@@ -334,10 +326,16 @@
       custom:"other"
     };
 
-    let services = []; // { id, name, type, cat, customLogo }
+    let services = [];
     let connections = [];
     let nextId = 1;
     let dragId = null;
+
+    function iconSrc(type) {
+      if (type === "custom") return null;
+      const icon = ICON[type];
+      return icon ? `https://api.iconify.design/logos/${icon}.svg?height=22` : null;
+    }
 
     function showToast(msg) {
       const t = document.getElementById("toast");
@@ -347,28 +345,69 @@
     }
 
     function logoUrl(s) {
-      if (s.type === "custom") {
-        return s.customLogo || null;
-      }
+      if (s.type === "custom") return s.customLogo || null;
       const icon = ICON[s.type];
       return icon ? `https://api.iconify.design/logos/${icon}.svg?height=26` : null;
     }
 
     function nodeLabel(s) {
       const url = logoUrl(s);
-      if (url) return `<img src='${url}' width='26' height='26'/> ${s.name}`;
-      return s.name;
+      return url ? `<img src='${url}' width='26' height='26'/> ${s.name}` : s.name;
     }
+
+    // Build custom dropdown menu
+    function buildTypeDropdown() {
+      const menu = document.getElementById("svcTypeMenu");
+      let html = "";
+      TYPE_GROUPS.forEach(g => {
+        html += `<div class="dd-group">${g.label}</div>`;
+        g.items.forEach(type => {
+          const src = iconSrc(type);
+          const img = src ? `<img src="${src}" alt="" />` : `<span style="width:22px;display:inline-block"></span>`;
+          const cls = type === "custom" ? "dd-item custom-item" : "dd-item";
+          html += `<div class="${cls}" data-type="${type}">${img}<span>${TYPE_LABEL[type]}</span></div>`;
+        });
+      });
+      menu.innerHTML = html;
+
+      menu.querySelectorAll(".dd-item").forEach(item => {
+        item.onclick = () => {
+          const type = item.dataset.type;
+          document.getElementById("svcType").value = type;
+          document.getElementById("svcTypeLabel").textContent = TYPE_LABEL[type];
+          const iconEl = document.getElementById("svcTypeIcon");
+          const src = iconSrc(type);
+          if (src) {
+            iconEl.src = src;
+            iconEl.style.display = "";
+          } else {
+            iconEl.style.display = "none";
+          }
+          document.getElementById("customLogoWrap").style.display = type === "custom" ? "block" : "none";
+          if (TYPE_TO_CAT[type]) document.getElementById("svcCat").value = TYPE_TO_CAT[type];
+          document.getElementById("svcTypeDd").classList.remove("open");
+          menu.querySelectorAll(".dd-item").forEach(x => x.classList.remove("active"));
+          item.classList.add("active");
+        };
+      });
+    }
+
+    document.getElementById("svcTypeBtn").onclick = (e) => {
+      e.stopPropagation();
+      document.getElementById("svcTypeDd").classList.toggle("open");
+    };
+    document.addEventListener("click", () => {
+      document.getElementById("svcTypeDd").classList.remove("open");
+    });
 
     function refreshServiceList() {
       const ul = document.getElementById("serviceList");
       ul.innerHTML = services.map(s => {
         const url = logoUrl(s);
         const thumb = url ? `<img class="thumb" src="${url}" alt="" />` : "";
-        const typeTag = TYPE_LABEL[s.type] || s.type;
         return `<li draggable="true" data-id="${s.id}">
           <span>${thumb}<span class="handle">⠿</span>${s.name}
-            <span class="meta-tag">${typeTag}</span>
+            <span class="meta-tag">${TYPE_LABEL[s.type] || s.type}</span>
             <span class="meta-tag">${CAT_LABEL[s.cat] || s.cat}</span>
           </span>
           <button class="remove" data-id="${s.id}">✕</button>
@@ -381,8 +420,7 @@
           const id = +btn.dataset.id;
           services = services.filter(s => s.id !== id);
           connections = connections.filter(c => c.fromId !== id && c.toId !== id);
-          refreshAll();
-          render();
+          refreshAll(); render();
         };
       });
 
@@ -403,13 +441,8 @@
           const targetId = +li.dataset.id;
           if (targetId === dragId) return;
           ul.querySelectorAll("li").forEach(x => x.classList.remove("drag-over", "connect-target"));
-          if (e.altKey) {
-            li.classList.add("connect-target");
-            e.dataTransfer.dropEffect = "link";
-          } else {
-            li.classList.add("drag-over");
-            e.dataTransfer.dropEffect = "move";
-          }
+          if (e.altKey) { li.classList.add("connect-target"); e.dataTransfer.dropEffect = "link"; }
+          else { li.classList.add("drag-over"); e.dataTransfer.dropEffect = "move"; }
         });
         li.addEventListener("dragleave", () => li.classList.remove("drag-over", "connect-target"));
         li.addEventListener("drop", (e) => {
@@ -419,9 +452,7 @@
           if (e.altKey) {
             if (!connections.some(c => c.fromId === dragId && c.toId === targetId)) {
               connections.push({ fromId: dragId, toId: targetId, style: "-->" });
-              showToast("Connection added");
-              refreshConnList();
-              render();
+              showToast("Connection added"); refreshConnList(); render();
             } else showToast("Connection already exists");
           } else {
             const fromIdx = services.findIndex(s => s.id === dragId);
@@ -429,8 +460,7 @@
             if (fromIdx > -1 && toIdx > -1) {
               const [item] = services.splice(fromIdx, 1);
               services.splice(toIdx, 0, item);
-              refreshServiceList();
-              showToast("Reordered");
+              refreshServiceList(); showToast("Reordered");
             }
           }
           ul.querySelectorAll("li").forEach(x => x.classList.remove("drag-over", "connect-target"));
@@ -447,50 +477,26 @@
       ul.innerHTML = connections.map((c, i) => {
         const from = services.find(s => s.id === c.fromId)?.name || "?";
         const to = services.find(s => s.id === c.toId)?.name || "?";
-        return `<li>
-          <span>${from} ${c.style} ${to}</span>
-          <button class="remove" data-i="${i}">✕</button>
-        </li>`;
+        return `<li><span>${from} ${c.style} ${to}</span>
+          <button class="remove" data-i="${i}">✕</button></li>`;
       }).join("");
       ul.querySelectorAll(".remove").forEach(btn => {
-        btn.onclick = () => {
-          connections.splice(+btn.dataset.i, 1);
-          refreshConnList();
-          render();
-        };
+        btn.onclick = () => { connections.splice(+btn.dataset.i, 1); refreshConnList(); render(); };
       });
     }
 
-    function refreshAll() {
-      refreshServiceList();
-      refreshConnList();
-    }
+    function refreshAll() { refreshServiceList(); refreshConnList(); }
 
     function addService() {
       const name = document.getElementById("svcName").value.trim();
-      if (!name) {
-        showToast("Enter a service name");
-        return;
-      }
+      if (!name) { showToast("Enter a service name"); return; }
       const type = document.getElementById("svcType").value;
-      let cat = document.getElementById("svcCat").value;
-      // Prefer category from type if user hasn't changed it much
-      if (TYPE_TO_CAT[type]) cat = document.getElementById("svcCat").value || TYPE_TO_CAT[type];
-
+      const cat = document.getElementById("svcCat").value;
       let customLogo = null;
       if (type === "custom") {
-        const url = document.getElementById("customLogo").value.trim();
-        customLogo = url || null;
+        customLogo = document.getElementById("customLogo").value.trim() || null;
       }
-
-      services.push({
-        id: nextId++,
-        name,
-        type,
-        cat,
-        customLogo
-      });
-
+      services.push({ id: nextId++, name, type, cat, customLogo });
       document.getElementById("svcName").value = "";
       document.getElementById("customLogo").value = "";
       refreshAll();
@@ -501,34 +507,23 @@
       const fromId = +document.getElementById("connFrom").value;
       const toId = +document.getElementById("connTo").value;
       const style = document.getElementById("connStyle").value;
-      if (!fromId || !toId || fromId === toId) {
-        showToast("Select two different services");
-        return;
-      }
+      if (!fromId || !toId || fromId === toId) { showToast("Select two different services"); return; }
       if (connections.some(c => c.fromId === fromId && c.toId === toId)) {
-        showToast("Connection already exists");
-        return;
+        showToast("Connection already exists"); return;
       }
       connections.push({ fromId, toId, style });
-      refreshConnList();
-      render();
-      showToast("Connection added");
+      refreshConnList(); render(); showToast("Connection added");
     }
 
     function autoConnect() {
       connections = [];
       const byCat = {};
-      services.forEach(s => {
-        if (!byCat[s.cat]) byCat[s.cat] = [];
-        byCat[s.cat].push(s);
-      });
+      services.forEach(s => { if (!byCat[s.cat]) byCat[s.cat] = []; byCat[s.cat].push(s); });
       const first = (cat) => byCat[cat]?.[0];
       const all = (cat) => byCat[cat] || [];
-
       const edges = all("edge");
-      for (let i = 0; i < edges.length - 1; i++) {
+      for (let i = 0; i < edges.length - 1; i++)
         connections.push({ fromId: edges[i].id, toId: edges[i+1].id, style: "-->" });
-      }
       if (edges.length && first("net"))
         connections.push({ fromId: edges[edges.length-1].id, toId: first("net").id, style: "-->" });
       all("net").forEach(n => all("compute").forEach(c =>
@@ -540,9 +535,7 @@
         all("int").forEach(i => connections.push({ fromId: c.id, toId: i.id, style: "-->" }));
         all("analytics").forEach(a => connections.push({ fromId: c.id, toId: a.id, style: "-->" }));
       });
-      all("int").forEach(i => {
-        if (first("data")) connections.push({ fromId: i.id, toId: first("data").id, style: "-.->" });
-      });
+      all("int").forEach(i => { if (first("data")) connections.push({ fromId: i.id, toId: first("data").id, style: "-.->" }); });
       all("sec").forEach(s => {
         [...all("compute"), ...all("data"), ...all("net")].slice(0, 4).forEach(t =>
           connections.push({ fromId: s.id, toId: t.id, style: "-.->" }));
@@ -551,52 +544,36 @@
         [...all("compute"), ...all("net"), ...all("data")].slice(0, 3).forEach(t =>
           connections.push({ fromId: o.id, toId: t.id, style: "-.->" }));
       });
-
-      refreshConnList();
-      render();
+      refreshConnList(); render();
       showToast(`Auto-connected (${connections.length} links)`);
     }
 
     function buildMermaid() {
       if (!services.length) return "flowchart TB\n  Empty[Add services on the left]";
-
       const byCat = {};
-      services.forEach(s => {
-        if (!byCat[s.cat]) byCat[s.cat] = [];
-        byCat[s.cat].push(s);
-      });
-
+      services.forEach(s => { if (!byCat[s.cat]) byCat[s.cat] = []; byCat[s.cat].push(s); });
       const idMap = {};
       services.forEach(s => { idMap[s.id] = "N" + s.id; });
-
-      const lines = ["flowchart TB"];
-      lines.push("  User((User / Client))");
-
+      const lines = ["flowchart TB", "  User((User / Client))"];
       const order = ["edge","net","compute","data","int","analytics","sec","ops","other"];
       order.forEach(cat => {
         const items = byCat[cat];
         if (!items?.length) return;
         lines.push(`  subgraph ${cat.toUpperCase()}["${CAT_LABEL[cat]}"]`);
-        items.forEach(s => {
-          lines.push(`    ${idMap[s.id]}["${nodeLabel(s)}"]`);
-        });
+        items.forEach(s => lines.push(`    ${idMap[s.id]}["${nodeLabel(s)}"]`));
         lines.push("  end");
       });
-
       const start = byCat.edge?.[0] || byCat.net?.[0] || byCat.compute?.[0];
       if (start) lines.push(`  User --> ${idMap[start.id]}`);
-
       connections.forEach(c => {
         const a = idMap[c.fromId], b = idMap[c.toId];
         if (a && b) lines.push(`  ${a} ${c.style} ${b}`);
       });
-
       lines.push("  classDef edge fill:#1a2a24,stroke:#5ec4a0,color:#e4e4e7");
       lines.push("  classDef net fill:#1a222a,stroke:#9FB4A8,color:#e4e4e7");
       lines.push("  classDef compute fill:#221a1a,stroke:#c8ccd4,color:#e4e4e7");
       lines.push("  classDef data fill:#1a1f2a,stroke:#7aa2d4,color:#e4e4e7");
       lines.push("  classDef sec fill:#2a1a1a,stroke:#d48a7a,color:#e4e4e7");
-
       return lines.join("\n");
     }
 
@@ -659,10 +636,7 @@
         if (navigator.clipboard && window.ClipboardItem) {
           await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
           btn.textContent = "Copied!";
-        } else {
-          window.open(URL.createObjectURL(blob), "_blank");
-          btn.textContent = "Opened";
-        }
+        } else { window.open(URL.createObjectURL(blob), "_blank"); btn.textContent = "Opened"; }
       } catch (e) { alert(e.message); btn.textContent = "Copy Image"; }
       finally { setTimeout(() => { btn.disabled = false; btn.textContent = "Copy Image"; }, 1500); }
     }
@@ -712,23 +686,12 @@
     function loadPreset(key) {
       const list = PRESETS[key];
       if (!list) return;
-      services = [];
-      connections = [];
-      nextId = 1;
+      services = []; connections = []; nextId = 1;
       list.forEach(item => {
         services.push({ id: nextId++, name: item.name, type: item.type, cat: item.cat, customLogo: null });
       });
-      refreshAll();
-      autoConnect();
+      refreshAll(); autoConnect();
     }
-
-    // Toggle custom logo field
-    document.getElementById("svcType").addEventListener("change", () => {
-      const isCustom = document.getElementById("svcType").value === "custom";
-      document.getElementById("customLogoWrap").style.display = isCustom ? "block" : "none";
-      const type = document.getElementById("svcType").value;
-      if (TYPE_TO_CAT[type]) document.getElementById("svcCat").value = TYPE_TO_CAT[type];
-    });
 
     mermaid.initialize({
       startOnLoad: false, theme: "dark", securityLevel: "loose",
@@ -756,16 +719,13 @@
     document.getElementById("copyImage").onclick = copyImage;
     document.getElementById("downloadPng").onclick = downloadPNG;
     document.getElementById("clearAll").onclick = () => {
-      if (confirm("Clear all services and connections?")) {
-        services = []; connections = []; nextId = 1; refreshAll(); render();
-      }
+      if (confirm("Clear all?")) { services = []; connections = []; nextId = 1; refreshAll(); render(); }
     };
     document.querySelectorAll(".preset").forEach(el => {
       el.onclick = () => loadPreset(el.dataset.preset);
     });
 
-    // Init type→category sync
-    document.getElementById("svcType").dispatchEvent(new Event("change"));
+    buildTypeDropdown();
     loadPreset("3tier");
   </script>
 </body>
